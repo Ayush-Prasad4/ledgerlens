@@ -3,13 +3,58 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 
 
 ITEM_PATTERN = re.compile(
     r"^(Item\s+\d+[A-Z]?(?:\.\s*|\s+).+)$",
     re.IGNORECASE,
 )
+
+
+def _merge_cells(cells: list[str]) -> list[str]:
+    """SEC tables split '$', '7', '%' and ')' into separate cells; glue them back."""
+
+    merged = []
+    prefix = ""
+
+    for cell in cells:
+        if not cell:
+            continue
+
+        if cell in {"$", "("}:
+            prefix += cell
+            continue
+
+        if cell in {"%", ")", ")%"} and merged:
+            merged[-1] += cell
+            continue
+
+        merged.append(prefix + cell)
+        prefix = ""
+
+    return merged
+
+
+def table_to_text(table) -> str:
+    """Turn an HTML table into text: one row per line, cells separated by ' | '."""
+
+    rows = []
+
+    for tr in table.find_all("tr"):
+        if tr.find_parent("table") is not table:
+            continue
+
+        cells = [
+            re.sub(r"\s+", " ", td.get_text(" ")).strip()
+            for td in tr.find_all(["td", "th"], recursive=False)
+        ]
+        cells = _merge_cells(cells)
+
+        if cells:
+            rows.append(" | ".join(cells))
+
+    return "\n".join(rows)
 
 
 def html_to_text(html_path: Path) -> str:
@@ -20,6 +65,11 @@ def html_to_text(html_path: Path) -> str:
 
     for tag in soup(["script", "style", "noscript", "svg"]):
         tag.decompose()
+
+    for table in soup.find_all("table"):
+        if table.find_parent("table"):
+            continue
+        table.replace_with(NavigableString("\n" + table_to_text(table) + "\n"))
 
     text = soup.get_text("\n")
 
