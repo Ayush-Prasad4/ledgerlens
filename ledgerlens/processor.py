@@ -6,10 +6,18 @@ from pathlib import Path
 from bs4 import BeautifulSoup, NavigableString
 
 
+ITEM_ORDER = [
+    "1", "1A", "1B", "1C", "2", "3", "4", "5", "6", "7", "7A", "8",
+    "9", "9A", "9B", "9C", "10", "11", "12", "13", "14", "15", "16",
+]
+
 ITEM_PATTERN = re.compile(
-    r"^(Item\s+\d+[A-Z]?(?:\.\s*|\s+).+)$",
+    r"^item\s+(\d{1,2}[A-C]?)\s*[.:\-–—]?\s*(.*)$",
     re.IGNORECASE,
 )
+
+MAX_HEADING_CHARS = 250
+MAX_TITLE_CHARS = 200
 
 
 def _merge_cells(cells: list[str]) -> list[str]:
@@ -84,41 +92,85 @@ def html_to_text(html_path: Path) -> str:
     return "\n".join(lines)
 
 
-def extract_sections(text: str) -> list[dict[str, str]]:
-    """Split a filing into SEC Item-based sections."""
+def _find_headings(lines: list[str]) -> list[tuple[int, str, str, int]]:
+    """Un sab lines ko dhundho jo 'Item X' heading jaisi dikhti hain.
 
-    lines = text.splitlines()
+    Return: (line_number, item_key, title, body_start_line)
+    """
 
-    sections = []
-    current_title = None
-    current_lines = []
+    headings = []
 
-    for raw_line in lines:
-        line = raw_line.strip()
+    for i, line in enumerate(lines):
         match = ITEM_PATTERN.match(line)
 
-        if match:
-            if current_title and current_lines:
-                sections.append(
-                    {
-                        "title": current_title,
-                        "text": "\n".join(current_lines).strip(),
-                    }
-                )
+        if not match or " | " in line or len(line) > MAX_HEADING_CHARS:
+            continue
 
-            current_title = match.group(1).strip()
-            current_lines = []
+        key = match.group(1).upper()
 
-        elif current_title:
-            current_lines.append(line)
+        if key not in ITEM_ORDER:
+            continue
 
-    if current_title and current_lines:
-        sections.append(
-            {
-                "title": current_title,
-                "text": "\n".join(current_lines).strip(),
-            }
-        )
+        title = match.group(2).strip()
+        body_start = i + 1
+
+        if not title and i + 1 < len(lines):
+            next_line = lines[i + 1]
+
+            if 0 < len(next_line) <= MAX_TITLE_CHARS and not ITEM_PATTERN.match(next_line):
+                title = next_line
+                body_start = i + 2
+
+        headings.append((i, key, title, body_start))
+
+    return headings
+
+
+def extract_sections(text: str) -> list[dict[str, str]]:
+    """Split a filing into SEC Item-based sections.
+
+    Ek Item ki heading kai jagah dikh sakti hai (table of contents, cross-reference).
+    Asli heading wo hai jiske baad sabse zyada text aata hai.
+    """
+
+    lines = [line.strip() for line in text.splitlines()]
+    headings = _find_headings(lines)
+
+    if not headings:
+        return []
+
+    spans = []
+
+    for n, (_, _, _, body_start) in enumerate(headings):
+        next_heading_line = headings[n + 1][0] if n + 1 < len(headings) else len(lines)
+        spans.append(sum(len(line) for line in lines[body_start:next_heading_line]))
+
+    best = {}
+
+    for n, (_, key, _, _) in enumerate(headings):
+        if key not in best or spans[n] > spans[best[key]]:
+            best[key] = n
+
+    chosen = []
+    last_rank = -1
+
+    for n in sorted(best.values()):
+        rank = ITEM_ORDER.index(headings[n][1])
+
+        if rank > last_rank:
+            chosen.append(n)
+            last_rank = rank
+
+    sections = []
+
+    for pos, n in enumerate(chosen):
+        _, key, title, body_start = headings[n]
+        end = headings[chosen[pos + 1]][0] if pos + 1 < len(chosen) else len(lines)
+        body = "\n".join(lines[body_start:end]).strip()
+
+        if body:
+            label = f"Item {key}. {title}" if title else f"Item {key}"
+            sections.append({"title": label, "text": body})
 
     return sections
 
