@@ -83,9 +83,9 @@ Item 2. Properties
 def test_toc_with_pipes_is_ignored_and_split_title_is_joined():
     sections = extract_sections(TOC_WITH_PIPES)
     assert [s["title"] for s in sections] == [
-        "Item 1. BUSINESS",
-        "Item 1A. RISK FACTORS",
-        "Item 2. PROPERTIES",
+        "Item 1. Business",
+        "Item 1A. Risk Factors",
+        "Item 2. Properties",
     ]
     assert sections[0]["text"] == "We build search products."
 
@@ -116,8 +116,8 @@ def test_cross_reference_does_not_break_a_section():
     assert titles == [
         "Item 1. Business",
         "Item 1A. Risk Factors",
-        "Item 7. Management's Discussion",
-        "Item 8. Financial Statements",
+        "Item 7. Management's Discussion and Analysis of Financial Condition and Results of Operations",
+        "Item 8. Financial Statements and Supplementary Data",
     ]
     item7 = sections[2]
     assert "Sales by segment are below." in item7["text"]

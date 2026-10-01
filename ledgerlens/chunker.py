@@ -47,38 +47,35 @@ def _looks_like_heading(line: str) -> bool:
 
 
 def split_blocks(text: str) -> list[tuple[str, list[str]]]:
-    """Text ko 'text' aur 'table' blocks mein baanto. Table row = jis line mein ' | ' ho."""
+    """Text ko 'text' aur 'table' blocks mein baanto. Table row = jis line mein ' | ' ho.
+
+    Do table rows ke beech ki chhoti akeli line (jaise 'OPERATING ACTIVITIES:') bhi table ka hissa hai.
+    """
+
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    kinds = ["table" if " | " in line else "text" for line in lines]
+
+    for i in range(1, len(lines) - 1):
+        if (
+            kinds[i] == "text"
+            and kinds[i - 1] == "table"
+            and kinds[i + 1] == "table"
+            and len(lines[i]) <= MAX_HEADING_LINE
+        ):
+            kinds[i] = "table"
 
     blocks = []
-    current_kind = None
-    current_lines = []
 
-    for line in text.splitlines():
-        line = line.strip()
+    for line, kind in zip(lines, kinds):
+        if blocks and blocks[-1][0] == kind:
+            blocks[-1][1].append(line)
+        else:
+            blocks.append((kind, [line]))
 
-        if not line:
-            continue
-
-        kind = "table" if " | " in line else "text"
-
-        if kind != current_kind and current_lines:
-            blocks.append((current_kind, current_lines))
-            current_lines = []
-
-        current_kind = kind
-        current_lines.append(line)
-
-    if current_lines:
-        blocks.append((current_kind, current_lines))
-
-    fixed = []
-
-    for kind, lines in blocks:
-        if kind == "table" and len(lines) < 2:
-            kind = "text"
-        fixed.append((kind, lines))
-
-    return fixed
+    return [
+        ("text" if kind == "table" and len(group) < 2 else kind, group)
+        for kind, group in blocks
+    ]
 
 
 def _split_table(rows: list[str], caption: str, max_chars: int) -> list[str]:

@@ -83,3 +83,17 @@ def test_very_long_table_rows_are_split_below_limit():
     assert len(chunks) > 2
     assert all(kind == "table" for kind, _ in chunks)
     assert all(len(text) <= 500 for _, text in chunks)
+
+
+def test_label_row_between_table_rows_stays_inside_the_table():
+    text = "\n".join(
+        [
+            "Cash flows (in millions):",
+            "Net income | 30,425 | 59,248",
+            "OPERATING ACTIVITIES:",
+            "Depreciation | 1,000 | 2,000",
+        ]
+    )
+    chunks = chunk_section(text)
+    assert [kind for kind, _ in chunks] == ["table"]
+    assert "OPERATING ACTIVITIES:" in chunks[0][1]

@@ -5,19 +5,65 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup, NavigableString
 
+# 10-K ke Items ka official order aur official naam.
+ITEM_TITLES = {
+    "1": "Business",
+    "1A": "Risk Factors",
+    "1B": "Unresolved Staff Comments",
+    "1C": "Cybersecurity",
+    "2": "Properties",
+    "3": "Legal Proceedings",
+    "4": "Mine Safety Disclosures",
+    "5": "Market for Registrant's Common Equity, Related Stockholder Matters and Issuer Purchases of Equity Securities",
+    "6": "[Reserved]",
+    "7": "Management's Discussion and Analysis of Financial Condition and Results of Operations",
+    "7A": "Quantitative and Qualitative Disclosures About Market Risk",
+    "8": "Financial Statements and Supplementary Data",
+    "9": "Changes in and Disagreements with Accountants on Accounting and Financial Disclosure",
+    "9A": "Controls and Procedures",
+    "9B": "Other Information",
+    "9C": "Disclosure Regarding Foreign Jurisdictions that Prevent Inspections",
+    "10": "Directors, Executive Officers and Corporate Governance",
+    "11": "Executive Compensation",
+    "12": "Security Ownership of Certain Beneficial Owners and Management and Related Stockholder Matters",
+    "13": "Certain Relationships and Related Transactions, and Director Independence",
+    "14": "Principal Accountant Fees and Services",
+    "15": "Exhibits and Financial Statement Schedules",
+    "16": "Form 10-K Summary",
+}
 
-ITEM_ORDER = [
-    "1", "1A", "1B", "1C", "2", "3", "4", "5", "6", "7", "7A", "8",
-    "9", "9A", "9B", "9C", "10", "11", "12", "13", "14", "15", "16",
-]
+ITEM_ORDER = list(ITEM_TITLES)
 
 ITEM_PATTERN = re.compile(
     r"^item\s+(\d{1,2}[A-C]?)\s*[.:\-–—]?\s*(.*)$",
     re.IGNORECASE,
 )
 
+# Har page ke upar chhapi "Item 7" jaisi line (running header), jisme heading ka naam nahi hota.
+PAGE_HEADER = re.compile(
+    r"^item\s+\d{1,2}[A-C]?(\s*,\s*(item\s+)?\d{1,2}[A-C]?)*$",
+    re.IGNORECASE,
+)
+
+# Page number, "Table of Contents" aur "PART II" jaisi akeli lines kachra hain.
+NOISE_LINE = re.compile(r"^(\d{1,3}|table of contents|part\s+[ivx]+)$", re.IGNORECASE)
+
+BLOCK_TAGS = [
+    "div", "p", "br", "tr", "li", "ul", "ol", "table",
+    "h1", "h2", "h3", "h4", "h5", "h6", "section", "article", "blockquote",
+]
+
+TITLE_CONNECTORS = {"of", "and", "the", "for", "to", "in", "with", "on", "or", "related"}
+
 MAX_HEADING_CHARS = 250
 MAX_TITLE_CHARS = 200
+
+
+def _clean_cell(text: str) -> str:
+    text = re.sub(r"\s+", " ", text).strip()
+    text = re.sub(r"([($])\s+", r"\1", text)
+    text = re.sub(r"\s+([)%])", r"\1", text)
+    return text
 
 
 def _merge_cells(cells: list[str]) -> list[str]:
@@ -54,7 +100,7 @@ def table_to_text(table) -> str:
             continue
 
         cells = [
-            re.sub(r"\s+", " ", td.get_text(" ")).strip()
+            _clean_cell(td.get_text(""))
             for td in tr.find_all(["td", "th"], recursive=False)
         ]
         cells = _merge_cells(cells)
@@ -66,7 +112,11 @@ def table_to_text(table) -> str:
 
 
 def html_to_text(html_path: Path) -> str:
-    """Convert an SEC filing HTML document into clean plain text."""
+    """Convert an SEC filing HTML document into clean plain text.
+
+    Nayi line sirf block elements (div, p, tr, ...) ke baad aati hai, span jaise inline
+    tukdon ke baad nahi, jaise browser dikhata hai.
+    """
 
     html = html_path.read_text(encoding="utf-8", errors="ignore")
     soup = BeautifulSoup(html, "lxml")
@@ -74,19 +124,23 @@ def html_to_text(html_path: Path) -> str:
     for tag in soup(["script", "style", "noscript", "svg"]):
         tag.decompose()
 
+    for tag in soup.find_all(BLOCK_TAGS):
+        tag.insert(0, "\n")
+        tag.append("\n")
+
     for table in soup.find_all("table"):
         if table.find_parent("table"):
             continue
         table.replace_with(NavigableString("\n" + table_to_text(table) + "\n"))
 
-    text = soup.get_text("\n")
+    text = soup.get_text("")
 
     lines = []
 
     for line in text.splitlines():
         line = re.sub(r"\s+", " ", line).strip()
 
-        if line:
+        if line and not NOISE_LINE.match(line):
             lines.append(line)
 
     return "\n".join(lines)
@@ -115,22 +169,31 @@ def _find_headings(lines: list[str]) -> list[tuple[int, str, str, int]]:
 
         key = match.group(1).upper()
 
-        if key not in ITEM_ORDER:
+        if key not in ITEM_TITLES:
             continue
 
         title = match.group(2).strip()
+        after_key = cells[0][match.end(1):].lstrip()
+        has_delimiter = after_key[:1] in {".", ":", "-", "–", "—"}
+
+        if not has_delimiter and (not title or title.startswith(",")):
+            continue  # page ke upar chhapa "Item 7" jaisa running header, heading nahi
 
         if not title and len(cells) > 1:
             title = cells[1]
 
         body_start = i + 1
+        next_line = lines[i + 1] if i + 1 < len(lines) else ""
+        next_is_title_part = 0 < len(next_line) <= MAX_TITLE_CHARS and not ITEM_PATTERN.match(
+            next_line
+        )
 
-        if not title and i + 1 < len(lines):
-            next_line = lines[i + 1]
-
-            if 0 < len(next_line) <= MAX_TITLE_CHARS and not ITEM_PATTERN.match(next_line):
-                title = next_line
-                body_start = i + 2
+        if not title and next_is_title_part:
+            title = next_line
+            body_start = i + 2
+        elif title and title.split()[-1].lower().strip(",") in TITLE_CONNECTORS:
+            if next_is_title_part:
+                body_start = i + 2  # lamba naam agli line mein bhi chala gaya hai
 
         headings.append((i, key, title, body_start))
 
@@ -174,6 +237,7 @@ def extract_sections(text: str) -> list[dict[str, str]]:
 
     Ek Item ki heading kai jagah dikh sakti hai (table of contents, cross-reference).
     Hum wo headings chunte hain jo sahi order mein hon aur jinke neeche sabse zyada text ho.
+    Section ka naam hamesha official naam hota hai, taaki saari companies mein ek jaisa rahe.
     """
 
     lines = [line.strip() for line in text.splitlines()]
@@ -186,13 +250,13 @@ def extract_sections(text: str) -> list[dict[str, str]]:
     sections = []
 
     for pos, n in enumerate(chosen):
-        _, key, title, body_start = headings[n]
+        _, key, _, body_start = headings[n]
         end = headings[chosen[pos + 1]][0] if pos + 1 < len(chosen) else len(lines)
-        body = "\n".join(lines[body_start:end]).strip()
+        body_lines = [line for line in lines[body_start:end] if not PAGE_HEADER.match(line)]
+        body = "\n".join(body_lines).strip()
 
         if body:
-            label = f"Item {key}. {title}" if title else f"Item {key}"
-            sections.append({"title": label, "text": body})
+            sections.append({"title": f"Item {key}. {ITEM_TITLES[key]}", "text": body})
 
     return sections
 

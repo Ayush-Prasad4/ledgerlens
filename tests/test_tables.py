@@ -23,3 +23,18 @@ def test_table_rows_stay_on_one_line(tmp_path):
     assert "Americas | $178,353 | 7% | $167,045" in text
     assert "Greater China | 64,377 | (4)% | 66,952" in text
     assert "Americas net sales increased." in text
+
+
+def test_cells_made_of_several_spans_are_cleaned(tmp_path):
+    html = (
+        "<table>"
+        "<tr><td>Derivatives</td><td>$<span>5</span></td><td><span>(</span><span> 23)</span></td></tr>"
+        "<tr><td>Hedged items</td><td>1</td><td>2</td></tr>"
+        "</table>"
+    )
+    path = tmp_path / "filing.html"
+    path.write_text(html, encoding="utf-8")
+
+    text = html_to_text(path)
+
+    assert "Derivatives | $5 | (23)" in text
