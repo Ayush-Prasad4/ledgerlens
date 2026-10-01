@@ -101,10 +101,17 @@ def _find_headings(lines: list[str]) -> list[tuple[int, str, str, int]]:
     headings = []
 
     for i, line in enumerate(lines):
-        match = ITEM_PATTERN.match(line)
-
-        if not match or " | " in line or len(line) > MAX_HEADING_CHARS:
+        if len(line) > MAX_HEADING_CHARS:
             continue
+
+        cells = [cell.strip() for cell in line.split(" | ")]
+        match = ITEM_PATTERN.match(cells[0])
+
+        if not match:
+            continue
+
+        if len(cells) > 1 and cells[-1].isdigit():
+            continue  # table of contents row: aakhir mein page number hota hai
 
         key = match.group(1).upper()
 
@@ -112,6 +119,10 @@ def _find_headings(lines: list[str]) -> list[tuple[int, str, str, int]]:
             continue
 
         title = match.group(2).strip()
+
+        if not title and len(cells) > 1:
+            title = cells[1]
+
         body_start = i + 1
 
         if not title and i + 1 < len(lines):
@@ -126,11 +137,43 @@ def _find_headings(lines: list[str]) -> list[tuple[int, str, str, int]]:
     return headings
 
 
+def _choose_headings(headings: list[tuple[int, str, str, int]], lines: list[str]) -> list[int]:
+    """Headings ki wo list chuno jo Item order mein badhti jaye aur jiske neeche sabse zyada text ho."""
+
+    count = len(headings)
+    ranks = [ITEM_ORDER.index(h[1]) for h in headings]
+
+    weights = []
+
+    for n, (_, _, _, body_start) in enumerate(headings):
+        next_heading_line = headings[n + 1][0] if n + 1 < count else len(lines)
+        weights.append(sum(len(line) for line in lines[body_start:next_heading_line]) + 1)
+
+    score = list(weights)
+    previous = [-1] * count
+
+    for i in range(count):
+        for j in range(i):
+            if ranks[j] < ranks[i] and score[j] + weights[i] > score[i]:
+                score[i] = score[j] + weights[i]
+                previous[i] = j
+
+    last = max(range(count), key=lambda i: score[i])
+    chosen = []
+
+    while last != -1:
+        chosen.append(last)
+        last = previous[last]
+
+    chosen.reverse()
+    return chosen
+
+
 def extract_sections(text: str) -> list[dict[str, str]]:
     """Split a filing into SEC Item-based sections.
 
     Ek Item ki heading kai jagah dikh sakti hai (table of contents, cross-reference).
-    Asli heading wo hai jiske baad sabse zyada text aata hai.
+    Hum wo headings chunte hain jo sahi order mein hon aur jinke neeche sabse zyada text ho.
     """
 
     lines = [line.strip() for line in text.splitlines()]
@@ -139,28 +182,7 @@ def extract_sections(text: str) -> list[dict[str, str]]:
     if not headings:
         return []
 
-    spans = []
-
-    for n, (_, _, _, body_start) in enumerate(headings):
-        next_heading_line = headings[n + 1][0] if n + 1 < len(headings) else len(lines)
-        spans.append(sum(len(line) for line in lines[body_start:next_heading_line]))
-
-    best = {}
-
-    for n, (_, key, _, _) in enumerate(headings):
-        if key not in best or spans[n] > spans[best[key]]:
-            best[key] = n
-
-    chosen = []
-    last_rank = -1
-
-    for n in sorted(best.values()):
-        rank = ITEM_ORDER.index(headings[n][1])
-
-        if rank > last_rank:
-            chosen.append(n)
-            last_rank = rank
-
+    chosen = _choose_headings(headings, lines)
     sections = []
 
     for pos, n in enumerate(chosen):
