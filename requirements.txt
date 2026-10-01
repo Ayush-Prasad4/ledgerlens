@@ -2,3 +2,5 @@ httpx
 python-dotenv
 beautifulsoup4
 lxml
+qdrant-client
+fastembed
