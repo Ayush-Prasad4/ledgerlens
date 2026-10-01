@@ -1,24 +1,34 @@
 from __future__ import annotations
 
 import json
+import re
 
 from ledgerlens.config import RAW_DIR
 from ledgerlens.processor import process_filing
 
 MAX_CHARS = 1800
 MAX_CAPTION_CHARS = 200
+MAX_HEADING_LINE = 120
+SENTENCE_END = re.compile(r"[.!?][\"”’)]*\s")
 
 
 def _split_long_paragraph(paragraph: str, max_chars: int) -> list[str]:
-    """Bahut lamba paragraph ho to use shabdon ki border pe kaato."""
+    """Bahut lamba paragraph ho to use vaakya (sentence) ki border pe kaato."""
 
     pieces = []
 
     while len(paragraph) > max_chars:
-        cut = paragraph.rfind(" ", 0, max_chars)
+        window = paragraph[:max_chars]
+        cut = -1
 
-        if cut == -1:
-            cut = max_chars
+        for match in SENTENCE_END.finditer(window):
+            cut = match.end()
+
+        if cut < max_chars // 2:
+            cut = window.rfind(" ")
+
+            if cut == -1:
+                cut = max_chars
 
         pieces.append(paragraph[:cut].strip())
         paragraph = paragraph[cut:].strip()
@@ -27,6 +37,13 @@ def _split_long_paragraph(paragraph: str, max_chars: int) -> list[str]:
         pieces.append(paragraph)
 
     return pieces
+
+
+def _looks_like_heading(line: str) -> bool:
+    """Chhoti line jo vaakya ki tarah khatam nahi hoti, wo aam taur par heading hoti hai."""
+
+    line = line.strip()
+    return 0 < len(line) <= MAX_HEADING_LINE and line[-1] not in ".!?"
 
 
 def split_blocks(text: str) -> list[tuple[str, list[str]]]:
@@ -67,18 +84,26 @@ def split_blocks(text: str) -> list[tuple[str, list[str]]]:
 def _split_table(rows: list[str], caption: str, max_chars: int) -> list[str]:
     """Badi table ko rows ke hisaab se todo, har tukde mein header row dohrao."""
 
-    header = rows[0]
     prefix = caption + "\n" if caption else ""
+    header = rows[0] if len(rows[0]) <= max_chars // 3 else ""
+    body = rows[1:] if header else rows
+    head_lines = [header] if header else []
+    limit = max(200, max_chars - len(prefix) - len(header) - 2)
+
+    pieces = []
+
+    for row in body:
+        pieces.extend(_split_long_paragraph(row, limit))
 
     parts = []
-    current = [header]
+    current = list(head_lines)
 
-    for row in rows[1:]:
+    for row in pieces:
         candidate = prefix + "\n".join(current + [row])
 
-        if len(candidate) > max_chars and len(current) > 1:
+        if len(candidate) > max_chars and len(current) > len(head_lines):
             parts.append(prefix + "\n".join(current))
-            current = [header]
+            current = list(head_lines)
 
         current.append(row)
 
@@ -102,7 +127,15 @@ def chunk_section(text: str, max_chars: int = MAX_CHARS) -> list[tuple[str, str]
             for paragraph in lines:
                 for piece in _split_long_paragraph(paragraph, max_chars):
                     if len("\n".join(buffer + [piece])) > max_chars:
-                        flush()
+                        if not all(_looks_like_heading(b) for b in buffer):
+                            carry = []
+
+                            while _looks_like_heading(buffer[-1]):
+                                carry.insert(0, buffer.pop())
+
+                            flush()
+                            buffer.extend(carry)
+
                     buffer.append(piece)
         else:
             caption = ""
