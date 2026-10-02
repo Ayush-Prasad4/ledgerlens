@@ -1,0 +1,17 @@
+split: dev | filter: auto | mode: hybrid
+q01 HIT  (rank 1)
+q03 HIT  (rank 1)
+q04 HIT  (rank 3)
+q06 MISS (top-1 was MSFT FY2025 | Item 8. Financial Statements and Supplementary Data)
+q07 HIT  (rank 4)
+q08 HIT  (rank 1)
+q10 HIT  (rank 2)
+q11 HIT  (rank 1)
+q12 HIT  (rank 1)
+q13 HIT  (rank 1)
+q15 MISS (top-1 was GOOGL FY2024 | Item 15. Exhibits and Financial Statement Schedules)
+q16 HIT  (rank 1)
+q18 HIT  (rank 1)
+
+hit-rate@5: 11/13 = 85%
+hit-rate@1: 8/13 = 62%

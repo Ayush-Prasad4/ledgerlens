@@ -32,17 +32,20 @@ def load_golden(split=None):
     return [e for e in entries if e.get("split") == split]
 
 
-def evaluate(entries, k=K, use_filter=False, mode="dense"):
+def evaluate(entries, k=K, use_filter=False, mode="dense", auto_filter=False):
     # imported here so tests can import this file without needing Qdrant
     from ledgerlens.search import search
 
     rows = []
     for e in entries:
         if use_filter:
-            results = search(e["question"], limit=k,
-                             ticker=e["ticker"], fiscal_year=e["fiscal_year"], mode=mode)
+            ticker, year = e["ticker"], e["fiscal_year"]
+        elif auto_filter:
+            from ledgerlens.query_parser import parse_query
+            ticker, year = parse_query(e["question"])
         else:
-            results = search(e["question"], limit=k, mode=mode)
+            ticker, year = None, None
+        results = search(e["question"], limit=k, ticker=ticker, fiscal_year=year, mode=mode)
         rank = None
         for i, (score, payload) in enumerate(results, start=1):
             if is_hit(e, payload):
@@ -58,7 +61,7 @@ def main():
                         help="exit with code 1 if hit-rate@5 is below this, e.g. 0.63")
     parser.add_argument("--split", choices=["dev", "test", "all"], default="all",
                         help="which golden questions to run (default: all)")
-    parser.add_argument("--filter", choices=["none", "oracle"], default="none",
+    parser.add_argument("--filter", choices=["none", "oracle", "auto"], default="none",
                         help="oracle = filter by the golden ticker+fiscal_year (upper bound)")
     parser.add_argument("--mode", choices=["dense", "hybrid"], default="dense",
                         help="retrieval mode (default: dense)")
@@ -69,7 +72,8 @@ def main():
         print(f"No questions found for split '{args.split}'")
         sys.exit(1)
 
-    rows = evaluate(entries, use_filter=(args.filter == "oracle"), mode=args.mode)
+    rows = evaluate(entries, use_filter=(args.filter == "oracle"), mode=args.mode,
+                    auto_filter=(args.filter == "auto"))
     print(f"split: {args.split} | filter: {args.filter} | mode: {args.mode}")
     for qid, rank, top in rows:
         if rank:
