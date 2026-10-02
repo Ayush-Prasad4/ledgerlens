@@ -5,3 +5,5 @@ lxml
 qdrant-client
 fastembed
 openai
+fastapi
+uvicorn
