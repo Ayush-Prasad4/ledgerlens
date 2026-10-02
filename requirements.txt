@@ -7,3 +7,5 @@ fastembed
 openai
 fastapi
 uvicorn
+
+rank-bm25==0.2.2

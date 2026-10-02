@@ -32,7 +32,7 @@ def load_golden(split=None):
     return [e for e in entries if e.get("split") == split]
 
 
-def evaluate(entries, k=K, use_filter=False):
+def evaluate(entries, k=K, use_filter=False, mode="dense"):
     # imported here so tests can import this file without needing Qdrant
     from ledgerlens.search import search
 
@@ -40,9 +40,9 @@ def evaluate(entries, k=K, use_filter=False):
     for e in entries:
         if use_filter:
             results = search(e["question"], limit=k,
-                             ticker=e["ticker"], fiscal_year=e["fiscal_year"])
+                             ticker=e["ticker"], fiscal_year=e["fiscal_year"], mode=mode)
         else:
-            results = search(e["question"], limit=k)
+            results = search(e["question"], limit=k, mode=mode)
         rank = None
         for i, (score, payload) in enumerate(results, start=1):
             if is_hit(e, payload):
@@ -60,6 +60,8 @@ def main():
                         help="which golden questions to run (default: all)")
     parser.add_argument("--filter", choices=["none", "oracle"], default="none",
                         help="oracle = filter by the golden ticker+fiscal_year (upper bound)")
+    parser.add_argument("--mode", choices=["dense", "hybrid"], default="dense",
+                        help="retrieval mode (default: dense)")
     args = parser.parse_args()
 
     entries = load_golden(args.split)
@@ -67,8 +69,8 @@ def main():
         print(f"No questions found for split '{args.split}'")
         sys.exit(1)
 
-    rows = evaluate(entries, use_filter=(args.filter == "oracle"))
-    print(f"split: {args.split} | filter: {args.filter}")
+    rows = evaluate(entries, use_filter=(args.filter == "oracle"), mode=args.mode)
+    print(f"split: {args.split} | filter: {args.filter} | mode: {args.mode}")
     for qid, rank, top in rows:
         if rank:
             print(f"{qid} HIT  (rank {rank})")
