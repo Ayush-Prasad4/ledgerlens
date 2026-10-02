@@ -1,0 +1,10 @@
+split: test
+q02 HIT  (rank 1)
+q05 HIT  (rank 3)
+q09 HIT  (rank 4)
+q14 MISS (top-1 was META FY2024 | Item 7. Management's Discussion and Analysis of Financial Condition and Results of Operations)
+q17 HIT  (rank 1)
+q19 MISS (top-1 was MSFT FY2026 | Item 7. Management's Discussion and Analysis of Financial Condition and Results of Operations)
+
+hit-rate@5: 4/6 = 67%
+hit-rate@1: 2/6 = 33%

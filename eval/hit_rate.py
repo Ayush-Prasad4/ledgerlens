@@ -24,9 +24,12 @@ def is_hit(entry, payload):
     return any(k.lower() in text for k in keywords(entry))
 
 
-def load_golden():
+def load_golden(split=None):
     lines = GOLDEN.read_text().splitlines()
-    return [json.loads(line) for line in lines if line.strip()]
+    entries = [json.loads(line) for line in lines if line.strip()]
+    if split in (None, "all"):
+        return entries
+    return [e for e in entries if e.get("split") == split]
 
 
 def evaluate(entries, k=K):
@@ -49,9 +52,17 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--min", type=float, default=None,
                         help="exit with code 1 if hit-rate@5 is below this, e.g. 0.63")
+    parser.add_argument("--split", choices=["dev", "test", "all"], default="all",
+                        help="which golden questions to run (default: all)")
     args = parser.parse_args()
 
-    rows = evaluate(load_golden())
+    entries = load_golden(args.split)
+    if not entries:
+        print(f"No questions found for split '{args.split}'")
+        sys.exit(1)
+
+    rows = evaluate(entries)
+    print(f"split: {args.split}")
     for qid, rank, top in rows:
         if rank:
             print(f"{qid} HIT  (rank {rank})")
