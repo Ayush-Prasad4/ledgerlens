@@ -1,0 +1,17 @@
+split: dev | filter: oracle
+q01 HIT  (rank 1)
+q03 MISS (top-1 was GOOGL FY2023 | Item 7. Management's Discussion and Analysis of Financial Condition and Results of Operations)
+q04 HIT  (rank 1)
+q06 HIT  (rank 4)
+q07 MISS (top-1 was AAPL FY2024 | Item 8. Financial Statements and Supplementary Data)
+q08 MISS (top-1 was AMZN FY2023 | Item 8. Financial Statements and Supplementary Data)
+q10 HIT  (rank 2)
+q11 HIT  (rank 1)
+q12 HIT  (rank 1)
+q13 HIT  (rank 1)
+q15 MISS (top-1 was GOOGL FY2024 | Item 8. Financial Statements and Supplementary Data)
+q16 HIT  (rank 1)
+q18 HIT  (rank 1)
+
+hit-rate@5: 9/13 = 69%
+hit-rate@1: 7/13 = 54%
