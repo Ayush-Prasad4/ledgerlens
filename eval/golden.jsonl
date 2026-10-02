@@ -1,0 +1,6 @@
+{"id": "q01", "question": "What were Apple's total net sales in fiscal 2023?", "ticker": "AAPL", "fiscal_year": 2023, "section": "Item 7", "must_contain": ["383.3 billion", "383,285"]}
+{"id": "q02", "question": "In its fiscal 2023 10-K, what does Apple say about relying on single-source outsourcing partners?", "ticker": "AAPL", "fiscal_year": 2023, "section": "Item 1A", "must_contain": "single-source outsourcing partners"}
+{"id": "q03", "question": "What were Alphabet's total revenues in fiscal 2023?", "ticker": "GOOGL", "fiscal_year": 2023, "section": "Item 7", "must_contain": "307.4 billion"}
+{"id": "q04", "question": "What were Amazon's total net sales in fiscal 2023?", "ticker": "AMZN", "fiscal_year": 2023, "section": "Item 7", "must_contain": "574,785"}
+{"id": "q05", "question": "What was Meta's total revenue in fiscal 2024?", "ticker": "META", "fiscal_year": 2024, "section": "Item 7", "must_contain": "164,501"}
+{"id": "q06", "question": "What was Microsoft's total revenue in fiscal 2025?", "ticker": "MSFT", "fiscal_year": 2025, "section": "Item 7", "must_contain": "281,724"}
