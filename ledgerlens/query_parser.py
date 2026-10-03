@@ -37,3 +37,24 @@ def parse_query(question):
                 year = int(d.group(2))
                 break
     return ticker, year
+
+
+RANGE_RE = re.compile(
+    r"(?:fiscal(?:\s+year)?|fy)\s*'?(20\d\d)\s*"
+    r"(?:to|and|through|vs\.?|versus|-|–)\s*"
+    r"(?:(?:fiscal(?:\s+year)?|fy)\s*)?'?(20\d\d)",
+    re.IGNORECASE,
+)
+
+
+def parse_years(question):
+    """Return every fiscal year mentioned in the question, sorted (may be empty)."""
+    years = {int(m.group(1)) for m in YEAR_RE.finditer(question)}
+    years |= {int(m.group(2)) for m in RANGE_RE.finditer(question)}
+    if not years:
+        ticker, _ = parse_query(question)
+        if ticker:
+            for d in DATE_RE.finditer(question):
+                if MONTHS[d.group(1).lower()] == FYE_MONTH[ticker]:
+                    years.add(int(d.group(2)))
+    return sorted(years)

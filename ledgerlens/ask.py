@@ -7,7 +7,7 @@ from fastembed import TextEmbedding
 from openai import OpenAI
 from qdrant_client import QdrantClient
 
-from ledgerlens.query_parser import parse_query
+from ledgerlens.query_parser import parse_query, parse_years
 from ledgerlens.search import search
 
 load_dotenv()
@@ -44,6 +44,14 @@ def get_llm():
 
 def retrieve(question):
     ticker, year = parse_query(question)
+    years = parse_years(question)
+    if ticker and len(years) > 1:
+        # one search per fiscal year, so every year's chunks reach the LLM
+        points = []
+        for y in years:
+            hits = search(question, limit=TOP_K, ticker=ticker, fiscal_year=y, mode=RETRIEVAL_MODE)
+            points.extend(payload for _score, payload in hits)
+        return points
     hits = search(question, limit=TOP_K, ticker=ticker, fiscal_year=year, mode=RETRIEVAL_MODE)
     return [payload for _score, payload in hits]
 
