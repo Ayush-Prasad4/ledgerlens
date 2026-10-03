@@ -7,6 +7,9 @@ from fastembed import TextEmbedding
 from openai import OpenAI
 from qdrant_client import QdrantClient
 
+from ledgerlens.query_parser import parse_query
+from ledgerlens.search import search
+
 load_dotenv()
 
 COLLECTION = "filings"
@@ -14,6 +17,7 @@ EMBED_MODEL = "BAAI/bge-small-en-v1.5"
 LLM_MODEL = os.getenv("LLM_MODEL", "gpt-5-mini")
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 TOP_K = 5
+RETRIEVAL_MODE = os.getenv("RETRIEVAL_MODE", "hybrid")
 
 SYSTEM = (
     "You answer questions about SEC 10-K filings using ONLY the numbered sources "
@@ -39,14 +43,15 @@ def get_llm():
 
 
 def retrieve(question):
-    vector = list(get_embedder().embed([question]))[0].tolist()
-    return get_qdrant().query_points(COLLECTION, query=vector, limit=TOP_K).points
+    ticker, year = parse_query(question)
+    hits = search(question, limit=TOP_K, ticker=ticker, fiscal_year=year, mode=RETRIEVAL_MODE)
+    return [payload for _score, payload in hits]
 
 
 def build_context(points):
     parts = []
     for i, p in enumerate(points, start=1):
-        c = p.payload
+        c = p
         parts.append(f"[{i}] {c['ticker']} FY{c['fiscal_year']} | {c['section']}\n{c['text']}")
     return "\n\n".join(parts)
 
@@ -64,10 +69,10 @@ def answer(question):
     sources = [
         {
             "id": i,
-            "chunk_id": p.payload["chunk_id"],
-            "ticker": p.payload["ticker"],
-            "fiscal_year": p.payload["fiscal_year"],
-            "section": p.payload["section"],
+            "chunk_id": p["chunk_id"],
+            "ticker": p["ticker"],
+            "fiscal_year": p["fiscal_year"],
+            "section": p["section"],
         }
         for i, p in enumerate(points, start=1)
     ]
