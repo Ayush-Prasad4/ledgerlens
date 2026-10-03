@@ -17,3 +17,7 @@
 {"id": "q17", "question": "In its fiscal 2023 10-K, what lawsuit did the Federal Trade Commission and state attorneys general file against Amazon in September 2023?", "ticker": "AMZN", "fiscal_year": 2023, "section": "Item 8", "must_contain": "filed a similar lawsuit", "split": "test"}
 {"id": "q18", "question": "In fiscal 2023, how much did Amazon invest in a note from Anthropic?", "ticker": "AMZN", "fiscal_year": 2023, "section": "Item 7", "must_contain": "Anthropic, PBC", "split": "dev"}
 {"id": "q19", "question": "In its fiscal 2024 10-K, what agreement did Microsoft enter into with Inflection AI in March 2024?", "ticker": "MSFT", "fiscal_year": 2024, "section": "Item 8", "must_contain": "agreement with Inflection AI", "split": "test"}
+{"id": "q20", "question": "Overall, how much did Apple sell in fiscal 2024, in millions of dollars?", "ticker": "AAPL", "fiscal_year": 2024, "section": "Item 7", "must_contain": "391,035", "split": "test"}
+{"id": "q21", "question": "What was Microsoft's top-line figure for the year ended June 2024?", "ticker": "MSFT", "fiscal_year": 2024, "section": "Item 7", "must_contain": "245,122", "split": "test"}
+{"id": "q22", "question": "How big were Amazon's sales across all its segments in 2024?", "ticker": "AMZN", "fiscal_year": 2024, "section": "Item 7", "must_contain": "637,959", "split": "test"}
+{"id": "q23", "question": "What did Alphabet's whole-company turnover come to for 2024?", "ticker": "GOOGL", "fiscal_year": 2024, "section": "Item 7", "must_contain": "350,018", "split": "test"}
