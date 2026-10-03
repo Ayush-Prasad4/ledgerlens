@@ -56,8 +56,7 @@ def build_context(points):
     return "\n\n".join(parts)
 
 
-def answer(question):
-    points = retrieve(question)
+def generate(question, points):
     context = build_context(points)
     response = get_llm().chat.completions.create(
         model=LLM_MODEL,
@@ -81,6 +80,10 @@ def answer(question):
         "answer": response.choices[0].message.content,
         "sources": sources,
     }
+
+
+def answer(question):
+    return generate(question, retrieve(question))
 
 
 def main():
