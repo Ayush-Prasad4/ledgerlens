@@ -4,9 +4,8 @@ from typing import TypedDict
 from langgraph.graph import END, START, StateGraph
 
 from ledgerlens.ask import generate, retrieve
+from ledgerlens.calculate import calculate_answer
 from ledgerlens.router import route_question
-
-NOT_SUPPORTED = "Calculation questions are not supported yet."
 
 
 class AgentState(TypedDict, total=False):
@@ -15,6 +14,7 @@ class AgentState(TypedDict, total=False):
     points: list
     answer: str
     sources: list
+    calculation: dict
 
 
 def route_node(state: AgentState) -> dict:
@@ -35,7 +35,12 @@ def generate_node(state: AgentState) -> dict:
 
 
 def calculate_node(state: AgentState) -> dict:
-    return {"answer": NOT_SUPPORTED, "sources": []}
+    result = calculate_answer(state["question"])
+    return {
+        "answer": result["answer"],
+        "sources": result["sources"],
+        "calculation": result["calculation"],
+    }
 
 
 def build_graph():
@@ -61,6 +66,7 @@ def run(question: str) -> dict:
         "route": final["route"],
         "answer": final["answer"],
         "sources": final["sources"],
+        "calculation": final.get("calculation"),
     }
 
 

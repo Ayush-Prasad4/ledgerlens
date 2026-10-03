@@ -16,9 +16,18 @@ def patch_workers(monkeypatch, route):
         calls.append(("generate", points))
         return {"answer": "fake answer", "sources": [{"id": 1}]}
 
+    def fake_calculate(question):
+        calls.append(("calculate", question))
+        return {
+            "answer": "calc answer",
+            "sources": [{"id": 1}],
+            "calculation": {"ok": True},
+        }
+
     monkeypatch.setattr(agent, "route_question", fake_route)
     monkeypatch.setattr(agent, "retrieve", fake_retrieve)
     monkeypatch.setattr(agent, "generate", fake_generate)
+    monkeypatch.setattr(agent, "calculate_answer", fake_calculate)
     return calls
 
 
@@ -30,6 +39,7 @@ def test_lookup_route_runs_retrieve_then_generate(monkeypatch):
     assert result["route"] == "lookup"
     assert result["answer"] == "fake answer"
     assert result["sources"] == [{"id": 1}]
+    assert result["calculation"] is None
     assert calls == [
         ("route", "test question"),
         ("retrieve", "test question"),
@@ -37,12 +47,16 @@ def test_lookup_route_runs_retrieve_then_generate(monkeypatch):
     ]
 
 
-def test_calculate_route_skips_retrieval(monkeypatch):
+def test_calculate_route_uses_calculate_answer(monkeypatch):
     calls = patch_workers(monkeypatch, "calculate")
 
     result = agent.run("how much did sales grow?")
 
     assert result["route"] == "calculate"
-    assert result["answer"] == agent.NOT_SUPPORTED
-    assert result["sources"] == []
-    assert calls == [("route", "how much did sales grow?")]
+    assert result["answer"] == "calc answer"
+    assert result["sources"] == [{"id": 1}]
+    assert result["calculation"] == {"ok": True}
+    assert calls == [
+        ("route", "how much did sales grow?"),
+        ("calculate", "how much did sales grow?"),
+    ]
