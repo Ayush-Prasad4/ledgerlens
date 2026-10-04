@@ -9,7 +9,8 @@ from ledgerlens.calc_retrieval import query_variants, retrieve_for_metrics
     [
         ("Net sales", ["Net sales", "Total net sales"]),
         ("Net income", ["Net income"]),
-        ("Total revenues", ["Total revenues"]),
+        # Microsoft and Meta print "Total revenue", Alphabet "Total revenues": try both
+        ("Total revenues", ["Total revenues", "Total revenue"]),
     ],
 )
 def test_query_variants(metric, expected):
