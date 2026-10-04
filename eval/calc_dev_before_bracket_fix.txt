@@ -1,0 +1,5 @@
+PASS c01 AAPL | result 2.0220
+PASS c02 META | result 21.9411
+PASS c03 GOOGL | result 12.6279
+FAIL c04 AMZN | result 27703.0000, wanted 33147
+split=dev passed 3/4
