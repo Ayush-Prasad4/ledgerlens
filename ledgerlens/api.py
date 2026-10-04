@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from ledgerlens.ask import answer
+from ledgerlens.agent import run
 
 app = FastAPI(title="LedgerLens")
 
@@ -20,4 +20,4 @@ def ask(body: Question):
     question = body.question.strip()
     if not question:
         raise HTTPException(status_code=400, detail="question must not be empty")
-    return answer(question)
+    return run(question)
