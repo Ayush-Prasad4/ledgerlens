@@ -2,4 +2,6 @@ PASS c01 AAPL | result 2.0220
 PASS c02 META | result 21.9411
 PASS c03 GOOGL | result 12.6279
 PASS c04 AMZN | result 33147.0000
-split=dev passed 4/4
+PASS c05 MSFT | result 12.0389
+PASS c06 GOOGL | result 13.8662
+split=dev passed 6/6
