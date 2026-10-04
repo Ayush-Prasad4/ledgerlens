@@ -8,9 +8,20 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from ledgerlens import ask  # noqa: E402
+from ledgerlens.lookup_retrieval import retrieve_lookup  # noqa: E402
+from ledgerlens.query_parser import parse_query  # noqa: E402
+from ledgerlens.search import search  # noqa: E402
+
+
+def current8(question):
+    """Same as ask.retrieve for a single-year question, but 8 chunks (equal budget to merged)."""
+    ticker, year = parse_query(question)
+    hits = search(question, limit=8, ticker=ticker, fiscal_year=year, mode=ask.RETRIEVAL_MODE)
+    return [payload for _score, payload in hits]
+
 
 # name -> function(question) -> list of chunk payload dicts, best first
-STRATEGIES = {"current": ask.retrieve}
+STRATEGIES = {"current": ask.retrieve, "current8": current8, "merged": retrieve_lookup}
 
 
 def keywords(row):
@@ -44,20 +55,22 @@ def main():
         rows = [r for r in rows if r["split"] == args.split]
 
     retrieve = STRATEGIES[args.strategy]
-    lines, h5, h1 = [], 0, 0
+    lines, h5, h1, hall = [], 0, 0, 0
     for r in rows:
         pts = retrieve(r["question"])
         hits = [is_hit(r, p) for p in pts]
-        a5 = any(hits[:5])
-        a1 = bool(hits and hits[0])
+        a5, a1, aall = any(hits[:5]), bool(hits and hits[0]), any(hits)
         h5 += a5
         h1 += a1
+        hall += aall
         first = next((i + 1 for i, h in enumerate(hits) if h), None)
-        lines.append(f"{r['id']} hit@5={'Y' if a5 else 'N'} hit@1={'Y' if a1 else 'N'} first_hit_rank={first} chunks={len(pts)}")
+        yn = lambda b: "Y" if b else "N"
+        lines.append(f"{r['id']} hit@5={yn(a5)} hit@1={yn(a1)} hit@all={yn(aall)} first_hit_rank={first} chunks={len(pts)}")
 
     commit = git("rev-parse", "--short", "HEAD")
     dirty = any(not l.startswith("??") for l in git("status", "--porcelain").splitlines())
-    lines += ["", f"strategy {args.strategy}, split {args.split}: hit@5 {h5}/{len(rows)}, hit@1 {h1}/{len(rows)}"]
+    n = len(rows)
+    lines += ["", f"strategy {args.strategy}, split {args.split}: hit@5 {h5}/{n}, hit@1 {h1}/{n}, hit@all {hall}/{n} (all = every retrieved chunk)"]
     lines.append(f"code commit {commit}" + (" (uncommitted changes present)" if dirty else ""))
     text = "\n".join(lines)
     print(text)
