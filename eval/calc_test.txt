@@ -1,0 +1,7 @@
+PASS t01 MSFT | result 14.9322
+PASS t02 AAPL | result 6.4255
+PASS t03 GOOGL | result 15.0901
+PASS t04 META | result 22.1670
+FAIL t05 MSFT | not verified: no facts returned
+split=test passed 4/5
+code commit: 309f7bd
