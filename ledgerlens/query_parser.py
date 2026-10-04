@@ -17,14 +17,19 @@ YEAR_RE = re.compile(r"(?:fiscal(?:\s+year)?|fy)\s*'?(20\d\d)", re.IGNORECASE)
 DATE_RE = re.compile(r"\b(" + "|".join(MONTHS) + r")\s+(?:\d{1,2},?\s+)?(20\d\d)\b", re.IGNORECASE)
 
 
-def parse_query(question):
-    """Return (ticker, fiscal_year); each is None when missing or ambiguous."""
+def _find_ticker(question):
+    """Return the one company named in the question, or None if missing or ambiguous."""
     q = question.lower()
     found = {
         t for t, names in COMPANIES.items()
         if any(re.search(rf"\b{re.escape(n)}\b", q) for n in names)
     }
-    ticker = next(iter(found)) if len(found) == 1 else None
+    return next(iter(found)) if len(found) == 1 else None
+
+
+def parse_query(question):
+    """Return (ticker, fiscal_year); each is None when missing or ambiguous."""
+    ticker = _find_ticker(question)
 
     year = None
     m = YEAR_RE.search(question)
@@ -36,6 +41,11 @@ def parse_query(question):
             if MONTHS[d.group(1).lower()] == FYE_MONTH[ticker]:
                 year = int(d.group(2))
                 break
+    if year is None:
+        # last resort: exactly one year anywhere in the question (e.g. "in 2024")
+        years = parse_years(question)
+        if len(years) == 1:
+            year = years[0]
     return ticker, year
 
 
@@ -58,7 +68,7 @@ def parse_years(question):
     """
     years = {int(m.group(1)) for m in YEAR_RE.finditer(question)}
     years |= {int(m.group(2)) for m in RANGE_RE.finditer(question)}
-    ticker, _ = parse_query(question)
+    ticker = _find_ticker(question)
     if ticker:
         for d in DATE_RE.finditer(question):
             if MONTHS[d.group(1).lower()] == FYE_MONTH[ticker]:
