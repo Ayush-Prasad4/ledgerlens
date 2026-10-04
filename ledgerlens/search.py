@@ -57,7 +57,8 @@ def _bm25_index(ticker, fiscal_year):
             if (ticker is None or c["ticker"] == ticker)
             and (fiscal_year is None or int(c["fiscal_year"]) == int(fiscal_year))
         ]
-        _bm25_cache[key] = (pool, BM25Okapi([tokenize(c["text"]) for c in pool]))
+        bm = BM25Okapi([tokenize(c["text"]) for c in pool]) if pool else None
+        _bm25_cache[key] = (pool, bm)
     return _bm25_cache[key]
 
 
@@ -87,9 +88,11 @@ def search(question, limit=3, ticker=None, fiscal_year=None, mode="dense"):
         return _dense(question, limit, ticker, fiscal_year)
     if mode != "hybrid":
         raise ValueError(f"unknown mode: {mode}")
+    pool, bm = _bm25_index(ticker, fiscal_year)
+    if not pool:
+        return []  # no chunks for this ticker/year, nothing to rank
     dense = _dense(question, CANDIDATES, ticker, fiscal_year)
     dense_ids = [p["chunk_id"] for _, p in dense]
-    pool, bm = _bm25_index(ticker, fiscal_year)
     scores = bm.get_scores(tokenize(question))
     top = sorted(range(len(pool)), key=lambda i: -scores[i])[:CANDIDATES]
     bm_ids = [pool[i]["chunk_id"] for i in top]
