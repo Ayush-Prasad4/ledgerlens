@@ -49,6 +49,9 @@ def test_lookup_route_runs_retrieve_then_generate(monkeypatch):
 
 def test_calculate_route_uses_calculate_answer(monkeypatch):
     calls = patch_workers(monkeypatch, "calculate")
+    # the sanity gate has its own tests (tests/test_sanity.py); this fake calculation has
+    # no facts or result, so let it through and keep this test about routing
+    monkeypatch.setattr(agent, "sanity_check", lambda question, calc: (True, ""))
 
     result = agent.run("how much did sales grow?")
 
@@ -60,3 +63,15 @@ def test_calculate_route_uses_calculate_answer(monkeypatch):
         ("route", "how much did sales grow?"),
         ("calculate", "how much did sales grow?"),
     ]
+
+
+def test_failed_sanity_gate_turns_the_answer_into_a_refusal(monkeypatch):
+    patch_workers(monkeypatch, "calculate")
+    monkeypatch.setattr(agent, "sanity_check", lambda question, calc: (False, "forced failure"))
+
+    result = agent.run("how much did sales grow?")
+
+    assert result["route"] == "calculate"
+    assert result["answer"] == agent.FAILURE_PREFIX + "forced failure"
+    assert result["sources"] == []
+    assert result["calculation"] == {"ok": False, "error": "forced failure"}
