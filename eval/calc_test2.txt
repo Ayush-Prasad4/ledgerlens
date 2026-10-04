@@ -1,0 +1,5 @@
+PASS t06 AAPL | result 8.3021
+PASS t07 GOOGL | result 15.1642
+PASS t08 META | result 28.5481
+split=test2 passed 3/3
+code commit: 7d839d9
