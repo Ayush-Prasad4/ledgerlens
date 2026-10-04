@@ -1,6 +1,14 @@
+import json
 import re
+from pathlib import Path
 
 CHECKS = ("must_not_contain", "must_contain_any", "must_not_match")
+
+
+def load_cases(path, split):
+    """Read the jsonl file; split 'all' returns every row."""
+    rows = [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]
+    return rows if split == "all" else [r for r in rows if r["split"] == split]
 
 
 def check_answer(case, answer):

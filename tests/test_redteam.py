@@ -57,3 +57,20 @@ def test_seed_file_rows_are_valid():
         if r["check"] == "must_not_match":
             for v in r["values"]:
                 re.compile(v)
+
+
+def test_load_cases_filters_by_split(tmp_path):
+    from ledgerlens.redteam import load_cases
+
+    p = tmp_path / "c.jsonl"
+    p.write_text('{"id":"a","split":"dev"}\n{"id":"b","split":"test"}\n')
+    assert [r["id"] for r in load_cases(p, "dev")] == ["a"]
+    assert [r["id"] for r in load_cases(p, "test")] == ["b"]
+
+
+def test_load_cases_all_returns_everything(tmp_path):
+    from ledgerlens.redteam import load_cases
+
+    p = tmp_path / "c.jsonl"
+    p.write_text('{"id":"a","split":"dev"}\n{"id":"b","split":"test"}\n')
+    assert len(load_cases(p, "all")) == 2
