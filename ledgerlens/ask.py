@@ -53,6 +53,12 @@ def retrieve(question):
             points.extend(payload for _score, payload in hits)
         return points
     hits = search(question, limit=TOP_K, ticker=ticker, fiscal_year=year, mode=RETRIEVAL_MODE)
+    if not hits and ticker and year:
+        # no filing for that year: a later 10-K carries it as a comparative column
+        for later in (year + 1, year + 2):
+            hits = search(question, limit=TOP_K, ticker=ticker, fiscal_year=later, mode=RETRIEVAL_MODE)
+            if hits:
+                break
     return [payload for _score, payload in hits]
 
 
@@ -64,7 +70,13 @@ def build_context(points):
     return "\n\n".join(parts)
 
 
+NOT_FOUND = "I could not find this in the provided filings."
+
+
 def generate(question, points):
+    if not points:
+        # nothing retrieved: do not ask the LLM, answer deterministically
+        return {"question": question, "answer": NOT_FOUND, "sources": []}
     context = build_context(points)
     response = get_llm().chat.completions.create(
         model=LLM_MODEL,
