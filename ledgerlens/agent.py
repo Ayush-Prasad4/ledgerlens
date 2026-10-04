@@ -3,8 +3,9 @@ from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
-from ledgerlens.ask import generate, retrieve
+from ledgerlens.ask import generate
 from ledgerlens.calculate import FAILURE_PREFIX, calculate_answer
+from ledgerlens.lookup_retrieval import retrieve_lookup as retrieve
 from ledgerlens.router import route_question
 from ledgerlens.sanity import sanity_check
 
