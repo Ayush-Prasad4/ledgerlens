@@ -28,7 +28,10 @@ def verify_fact(fact, chunks):
     if _norm(fact["quote"]) not in _norm(chunk["text"]):
         raise FactError(f"quote not found in chunk for {fact['name']}")
     if not number_in_text(fact["value"], fact["quote"]):
-        raise FactError(f"value not found in quote for {fact['name']}")
+        raise FactError(
+            f"value not found in quote for {fact['name']} "
+            "(negative numbers must keep their brackets)"
+        )
     return {
         "name": fact["name"],
         "value": parse_number(fact["value"]),

@@ -26,7 +26,13 @@ def test_parse_number_bad(raw):
 def test_number_in_text_found():
     assert number_in_text("391,035", "Net sales were $391,035 million in 2024.")
     assert number_in_text("391,035", "total was 391,035.")
-    assert number_in_text("391,035", "(391,035)")
+
+
+def test_number_in_text_bracketed_means_negative():
+    # (391,035) is a negative number in a filing: a bare "391,035" would drop the sign,
+    # so it must be rejected; the value has to carry its brackets.
+    assert not number_in_text("391,035", "(391,035)")
+    assert number_in_text("(391,035)", "(391,035)")
 
 
 def test_number_in_text_not_inside_bigger_number():

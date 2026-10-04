@@ -9,7 +9,7 @@ EXTRACT_SYSTEM = (
     'Reply with ONLY a JSON object: {"facts": [{"name": ..., "value": ..., "quote": ..., "chunk_id": ...}]}. '
     "name: lowercase letters, digits and underscores only, starting with a letter, "
     "include company and year (example: aapl_net_sales_2024). "
-    "value: the number exactly as printed in the excerpt, digits and commas only, no currency sign, no unit. "
+    "value: the number exactly as printed in the excerpt, digits and commas only, no currency sign, no unit; if the number is printed in parentheses (a negative), keep the parentheses, e.g. (2,722). "
     "quote: copy-paste the short piece of the excerpt that contains the number, character for character. "
     "chunk_id: the chunk_id of the excerpt you copied it from. "
     "Extract only the numbers needed to answer the question, one fact per number, "

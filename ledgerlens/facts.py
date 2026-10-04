@@ -25,4 +25,12 @@ def number_in_text(raw, text):
     if not raw:
         return False
     pattern = r"(?<![\d,.])" + re.escape(raw) + r"(?!\d)(?!,\d)(?!\.\d)"
-    return re.search(pattern, text) is not None
+    for m in re.finditer(pattern, text):
+        if "(" in raw:
+            return True  # the caller kept the brackets, the match already checked them
+        before = text[: m.start()].rstrip(" $")
+        after = text[m.end():].lstrip()
+        if before.endswith("(") and after.startswith(")"):
+            continue  # printed as (123) means negative; a bare 123 would drop the sign
+        return True
+    return False
