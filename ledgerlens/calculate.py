@@ -37,8 +37,16 @@ def _build_sources(facts, points):
     return sources, {s["chunk_id"]: s["id"] for s in sources}
 
 
+def _result_label(result, expression):
+    # heuristic: a formula that ends with "* 100" is a percent
+    text = f"{result:,.2f}"
+    if expression.replace(" ", "").endswith("*100"):
+        text += "%"
+    return text
+
+
 def _build_answer(result, expression, facts, source_ids):
-    lines = [f"Result: {result:,.2f}", "", f"Formula: {expression}", "", "Numbers used:"]
+    lines = [f"Result: {_result_label(result, expression)}", "", f"Formula: {expression}", "", "Numbers used:"]
     for f in facts:
         lines.append(
             f"- {f['name']} = {f['value']:,.10g} ({f['ticker']} FY{f['fiscal_year']}) "
