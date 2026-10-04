@@ -47,14 +47,22 @@ RANGE_RE = re.compile(
 )
 
 
+BARE_YEAR_RE = re.compile(r"\b(20\d\d)\b")
+
+
 def parse_years(question):
-    """Return every fiscal year mentioned in the question, sorted (may be empty)."""
+    """Return every fiscal year mentioned in the question, sorted (may be empty).
+
+    Counts: "fiscal 2024"/"FY2024", ranges like "fiscal 2023 to 2024", dates in the
+    company's fiscal-year-end month, and bare years that are not part of a date.
+    """
     years = {int(m.group(1)) for m in YEAR_RE.finditer(question)}
     years |= {int(m.group(2)) for m in RANGE_RE.finditer(question)}
-    if not years:
-        ticker, _ = parse_query(question)
-        if ticker:
-            for d in DATE_RE.finditer(question):
-                if MONTHS[d.group(1).lower()] == FYE_MONTH[ticker]:
-                    years.add(int(d.group(2)))
+    ticker, _ = parse_query(question)
+    if ticker:
+        for d in DATE_RE.finditer(question):
+            if MONTHS[d.group(1).lower()] == FYE_MONTH[ticker]:
+                years.add(int(d.group(2)))
+    without_dates = DATE_RE.sub(" ", question)
+    years |= {int(m.group(1)) for m in BARE_YEAR_RE.finditer(without_dates)}
     return sorted(years)
