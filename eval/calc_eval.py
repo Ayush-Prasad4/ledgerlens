@@ -35,7 +35,7 @@ def score(row, out):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--split", choices=["dev", "test", "all"], default="dev")
+    parser.add_argument("--split", default="dev", help="dev, test, test2 or all")
     parser.add_argument("--out", default=None)
     args = parser.parse_args()
 
