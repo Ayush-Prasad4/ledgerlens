@@ -1,0 +1,16 @@
+q01 hit@5=Y hit@1=Y hit@all=Y first_hit_rank=1 chunks=5
+q03 hit@5=Y hit@1=Y hit@all=Y first_hit_rank=1 chunks=5
+q04 hit@5=Y hit@1=N hit@all=Y first_hit_rank=3 chunks=5
+q06 hit@5=N hit@1=N hit@all=N first_hit_rank=None chunks=5
+q07 hit@5=Y hit@1=N hit@all=Y first_hit_rank=4 chunks=5
+q08 hit@5=Y hit@1=Y hit@all=Y first_hit_rank=1 chunks=5
+q10 hit@5=Y hit@1=N hit@all=Y first_hit_rank=2 chunks=5
+q11 hit@5=Y hit@1=Y hit@all=Y first_hit_rank=1 chunks=5
+q12 hit@5=Y hit@1=Y hit@all=Y first_hit_rank=1 chunks=5
+q13 hit@5=Y hit@1=Y hit@all=Y first_hit_rank=1 chunks=5
+q15 hit@5=N hit@1=N hit@all=N first_hit_rank=None chunks=5
+q16 hit@5=Y hit@1=Y hit@all=Y first_hit_rank=1 chunks=5
+q18 hit@5=Y hit@1=Y hit@all=Y first_hit_rank=1 chunks=5
+
+strategy current, split dev: hit@5 11/13, hit@1 8/13, hit@all 11/13 (all = every retrieved chunk)
+code commit f259633
