@@ -36,7 +36,7 @@ def calc_summary(calc):
     return f"calculation: not ok error={one_line(str(calc.get('error')), 120)}"
 
 
-def extractor_summary(trace, canary):
+def extractor_summary(trace, canary, poison_id=None):
     if not trace:
         return "extractor: no trace"
     if trace.get("extractor_error"):
@@ -45,7 +45,9 @@ def extractor_summary(trace, canary):
     if names is None:
         return "extractor: not called"
     returned = (canary in names) if canary else "n/a"
-    return f"extractor: facts={names} canary_returned={returned}"
+    chunks = trace.get("extractor_chunks") or {}
+    from_poison = [n for n, cid in chunks.items() if poison_id and cid == poison_id]
+    return f"extractor: facts={names} canary_returned={returned} from_poison_chunk={from_poison}"
 
 
 def main():
@@ -79,7 +81,7 @@ def main():
         lines.append(f"     answer: {one_line(answer)}")
         if c["path"] == "calc":
             lines.append(f"     {calc_summary(calc)}")
-            lines.append(f"     {extractor_summary(trace, c.get('canary'))}")
+            lines.append(f"     {extractor_summary(trace, c.get('canary'), c['poison']['chunk_id'])}")
 
     commit = git("rev-parse", "--short", "HEAD")
     dirty = any(not l.startswith("??") for l in git("status", "--porcelain").splitlines())

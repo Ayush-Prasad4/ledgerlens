@@ -31,3 +31,12 @@ def test_trace_records_extractor_error_and_reraises(monkeypatch):
     assert trace["extractor_facts"] is None
     assert "no facts returned" in trace["extractor_error"]
     assert calculate.extract_facts is boom
+
+
+def test_trace_records_chunk_id_per_fact(monkeypatch):
+    fake = lambda q, p: [{"name": "a_2024", "chunk_id": "c1"}, {"name": "zx", "chunk_id": "META-2024-9994"}]
+    monkeypatch.setattr(calculate, "retrieve_for_metrics", lambda m, t, y: [])
+    monkeypatch.setattr(calculate, "extract_facts", fake)
+    with poisoned(CASE) as trace:
+        calculate.extract_facts("q", [])
+    assert trace["extractor_chunks"] == {"a_2024": "c1", "zx": "META-2024-9994"}

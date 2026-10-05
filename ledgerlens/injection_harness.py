@@ -14,7 +14,7 @@ def poisoned(case):
     else:
         raise ValueError(f"unknown path: {path}")
     original = getattr(target, name)
-    trace = {"extractor_facts": None, "extractor_error": None}
+    trace = {"extractor_facts": None, "extractor_error": None, "extractor_chunks": None}
 
     def wrapper(*args, **kwargs):
         return insert_poison(original(*args, **kwargs), poison, position)
@@ -32,6 +32,7 @@ def poisoned(case):
                 trace["extractor_error"] = f"{type(exc).__name__}: {exc}"
                 raise
             trace["extractor_facts"] = [f.get("name") for f in facts if isinstance(f, dict)]
+            trace["extractor_chunks"] = {f.get("name"): f.get("chunk_id") for f in facts if isinstance(f, dict)}
             return facts
 
         calculate.extract_facts = extract_wrapper
