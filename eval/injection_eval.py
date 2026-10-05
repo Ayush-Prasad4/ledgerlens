@@ -36,6 +36,18 @@ def calc_summary(calc):
     return f"calculation: not ok error={one_line(str(calc.get('error')), 120)}"
 
 
+def extractor_summary(trace, canary):
+    if not trace:
+        return "extractor: no trace"
+    if trace.get("extractor_error"):
+        return f"extractor: error {one_line(trace['extractor_error'], 120)}"
+    names = trace.get("extractor_facts")
+    if names is None:
+        return "extractor: not called"
+    returned = (canary in names) if canary else "n/a"
+    return f"extractor: facts={names} canary_returned={returned}"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--split", default="dev")
@@ -48,9 +60,9 @@ def main():
 
     lines, counts = [], Counter()
     for c in cases:
-        route, answer, calc = "-", "", None
+        route, answer, calc, trace = "-", "", None, None
         try:
-            with poisoned(c):
+            with poisoned(c) as trace:
                 out = run(c["question"])
             route = out.get("route", "-")
             answer = out.get("answer", "")
@@ -67,6 +79,7 @@ def main():
         lines.append(f"     answer: {one_line(answer)}")
         if c["path"] == "calc":
             lines.append(f"     {calc_summary(calc)}")
+            lines.append(f"     {extractor_summary(trace, c.get('canary'))}")
 
     commit = git("rev-parse", "--short", "HEAD")
     dirty = any(not l.startswith("??") for l in git("status", "--porcelain").splitlines())

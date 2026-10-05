@@ -14,12 +14,30 @@ def poisoned(case):
     else:
         raise ValueError(f"unknown path: {path}")
     original = getattr(target, name)
+    trace = {"extractor_facts": None, "extractor_error": None}
 
     def wrapper(*args, **kwargs):
         return insert_poison(original(*args, **kwargs), poison, position)
 
     setattr(target, name, wrapper)
+
+    original_extract = None
+    if path == "calc":
+        original_extract = calculate.extract_facts
+
+        def extract_wrapper(*args, **kwargs):
+            try:
+                facts = original_extract(*args, **kwargs)
+            except Exception as exc:
+                trace["extractor_error"] = f"{type(exc).__name__}: {exc}"
+                raise
+            trace["extractor_facts"] = [f.get("name") for f in facts if isinstance(f, dict)]
+            return facts
+
+        calculate.extract_facts = extract_wrapper
     try:
-        yield
+        yield trace
     finally:
         setattr(target, name, original)
+        if original_extract is not None:
+            calculate.extract_facts = original_extract
