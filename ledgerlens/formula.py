@@ -18,3 +18,9 @@ def evaluate_formula(expression, facts):
         raise CalculatorError(f"unknown names: {unknown}")
     numeric = _IDENT.sub(lambda m: f"({values[m.group(0)]!r})", expression)
     return numeric, calculate(numeric)
+
+
+def used_facts(expression, facts):
+    """Keep only the facts whose names appear in the expression (order kept)."""
+    names = set(_IDENT.findall(expression))
+    return [f for f in facts if f["name"] in names]
