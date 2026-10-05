@@ -1,6 +1,6 @@
 from ledgerlens.calc_retrieval import retrieve_for_metrics
 from ledgerlens.extract_facts import extract_facts
-from ledgerlens.formula import evaluate_formula
+from ledgerlens.formula import evaluate_formula, used_facts
 from ledgerlens.formula_writer import write_formula
 from ledgerlens.planner import plan_metrics
 from ledgerlens.query_parser import parse_query, parse_years
@@ -69,6 +69,7 @@ def calculate_answer(question):
         facts = extract_facts(question, points)
         expression = write_formula(question, facts)
         numeric, result = evaluate_formula(expression, facts)
+        facts = used_facts(expression, facts)
     except ValueError as exc:
         return _failure(str(exc))
     sources, source_ids = _build_sources(facts, points)
