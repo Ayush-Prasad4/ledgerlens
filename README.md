@@ -14,6 +14,75 @@ Built solo, evaluation-first: dev splits for tuning, sealed test splits run once
 
 **Stack:** Python 3.12, FastAPI, LangGraph, Qdrant, BM25 + dense retrieval, OpenAI gpt-5-mini, pytest, GitHub Actions.
 
+## Example
+
+A lookup question, answered with citations:
+
+    $ python -m ledgerlens.agent "What were Apple's total net sales in fiscal 2024?"
+    Route: lookup
+
+    Apple’s total net sales in fiscal 2024 were $391,035 million [1][6].
+
+    Sources:
+    [1] AAPL FY2024 | Item 8. Financial Statements and Supplementary Data
+    [2] AAPL FY2024 | Item 7. Management's Discussion and Analysis of Financial Condition and Results of Operations
+    ... (8 sources in total, all AAPL FY2024)
+
+A calculation question. The numbers below passed the in-code check (quote inside the chunk, value inside the quote) before the calculator was allowed to use them:
+
+    $ python -m ledgerlens.agent "By what percent did Meta's total revenue grow from fiscal 2023 to fiscal 2024?"
+    Route: calculate
+
+    Result: 21.94%
+
+    Formula: (meta_total_revenue_2024 - meta_total_revenue_2023) / meta_total_revenue_2023 * 100
+
+    Numbers used:
+    - meta_total_revenue_2024 = 164,501 (META FY2024) [1]
+    - meta_total_revenue_2023 = 134,902 (META FY2024) [1]
+
+    Values are as printed in the filings; check the filing for the unit.
+
+    Sources:
+    [1] META FY2024 | Item 8. Financial Statements and Supplementary Data
+
+The Meta question is from the dev set, so it shows how the output looks, not how well the system generalises. See Results for sealed test numbers.
+
+## Quick start
+
+Needs Python 3.12, Docker, an OpenAI API key and a contact string for SEC EDGAR. The first run downloads the embedding model (BAAI/bge-small-en-v1.5).
+
+1. Install:
+
+        python3.12 -m venv .venv && source .venv/bin/activate
+        pip install -r requirements-dev.txt
+
+2. Create a `.env` file in the project root (it is gitignored):
+
+        OPENAI_API_KEY=your-key
+        SEC_USER_AGENT=Your Name your@email.com
+
+3. Start Qdrant (first time):
+
+        docker run -d --name qdrant -p 6333:6333 -v "$(pwd)/data/qdrant_storage:/qdrant/storage" qdrant/qdrant
+
+   Next time: `docker start qdrant`.
+
+4. Build the data (download filings, split into chunks, embed into the `filings` collection):
+
+        python -m ledgerlens.edgar
+        python -m ledgerlens.chunker
+        python -m ledgerlens.index
+
+5. Ask a question from the command line, or run the API:
+
+        python -m ledgerlens.agent "What were Apple's total net sales in fiscal 2024?"
+        uvicorn ledgerlens.api:app --port 8000
+
+   The API has `GET /health` and `POST /ask` with a JSON body `{"question": "..."}`.
+
+6. Run the unit tests: `pytest`
+
 ## How it works
 
     question
@@ -49,6 +118,39 @@ Built solo, evaluation-first: dev splits for tuning, sealed test splits run once
                          answer with result, formula and sources
 
 If any step cannot be verified, the answer says so instead of guessing.
+
+## Design decisions
+
+- **Verification is code, not a prompt.** The extractor LLM must return, for every number, the exact quote and the chunk it came from. Plain Python then checks that the quote is inside the chunk, that the value is inside the quote, and that negative values are written in brackets. One failed check rejects the whole list. Asking the model to "be careful" gave no guarantee, so the guarantee had to live outside the model.
+- **The formula writer never sees filing text.** It receives only fact names, values, ticker and fiscal year, and writes an expression over those names. Text from a retrieved chunk cannot reach it.
+- **The calculator is an AST evaluator** that allows only `+ - * /` and numbers. The model never executes code.
+- **Fail safe instead of guessing.** If nothing can be verified, the answer says so. On the first calculation test set this produced one safe failure (t05) instead of a wrong number.
+- **Router falls back to lookup** when the LLM output is not valid, so a bad routing response degrades to a cited answer instead of an error.
+- **Retrieval: filter first, then claim only what the test shows.** The automatic ticker/year filter was the clear gain on test (hit@1 3/10 to 5/10). Hybrid search is implemented, but its gain over dense + filter is within noise (one question is 10 points), so it is reported that way. A cross-encoder reranker was tried and dropped: no clear gain, 0.5-0.9 s slower per query.
+- **Sealed test splits, written before the run and run once.** Dev numbers are labelled tuned. A bug found on dev (a bracketed loss losing its sign) was fixed there, so the dev score is not evidence of generality; the test scores are.
+
+## Project layout
+
+    ledgerlens/        the package
+      api.py             FastAPI app: GET /health, POST /ask
+      agent.py           agent graph, entry point run(question)
+      router.py          decides lookup or calculate
+      planner.py         which metrics and years a calculation needs
+      query_parser.py    ticker and fiscal-year filter from the question
+      search.py          hybrid retrieval (dense + BM25)
+      extractor.py, extract_facts.py, facts.py, sanity.py,
+      formula_writer.py, calculator.py, calculate.py
+                         the calculation path: extract, verify, formula, compute
+      edgar.py, processor.py, chunker.py, index.py
+                         data pipeline: filings -> sections -> chunks -> Qdrant
+      injection.py, injection_harness.py, redteam.py
+                         Stage 9 security harness
+    eval/              eval scripts, golden sets and every recorded result file
+    tests/             unit tests (pytest)
+    data/              raw filings, processed chunks, Qdrant storage (not in git)
+    Dockerfile, requirements.txt, requirements-dev.txt, pytest.ini
+
+Run the unit tests with `pytest`.
 
 ## Status
 
