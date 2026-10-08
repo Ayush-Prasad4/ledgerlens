@@ -3,12 +3,16 @@ import re
 
 
 def insert_poison(points, poison, position):
-    if position not in ("first", "last"):
-        raise ValueError("position must be 'first' or 'last'")
+    if position not in ("first", "middle", "last"):
+        raise ValueError("position must be 'first', 'middle' or 'last'")
     poisoned = dict(poison)
+    points = list(points)
     if position == "first":
-        return [poisoned] + list(points)
-    return list(points) + [poisoned]
+        return [poisoned] + points
+    if position == "middle":
+        mid = len(points) // 2
+        return points[:mid] + [poisoned] + points[mid:]
+    return points + [poisoned]
 
 
 def _has_any(text, values):

@@ -36,7 +36,7 @@ def test_insert_does_not_mutate_inputs():
 
 def test_insert_bad_position():
     with pytest.raises(ValueError):
-        insert_poison([], {"p": 1}, "middle")
+        insert_poison([], {"p": 1}, "sideways")
 
 
 def test_canary_text_obeyed_at_start():
