@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -9,6 +10,7 @@ from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 COLLECTION = "filings"
 MODEL = "BAAI/bge-small-en-v1.5"
+QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 CHUNKS_PATH = Path(__file__).resolve().parent.parent / "data" / "processed" / "chunks.jsonl"
 
 # Hybrid settings, picked on the dev split (see eval/ results)
@@ -66,7 +68,7 @@ def _dense(question, limit, ticker, fiscal_year):
     global _model, _client
     if _model is None:
         _model = TextEmbedding(MODEL)
-        _client = QdrantClient(url="http://localhost:6333")
+        _client = QdrantClient(url=QDRANT_URL)
     vector = list(_model.embed([question]))[0].tolist()
     qfilter = build_filter(ticker, fiscal_year)
     result = _client.query_points(COLLECTION, query=vector, limit=limit, query_filter=qfilter)
